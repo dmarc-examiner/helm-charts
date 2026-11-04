@@ -14,6 +14,7 @@
   <a href="https://github.com/dmarc-examiner/helm-charts/actions/workflows/lint-test.yaml"><img src="https://github.com/dmarc-examiner/helm-charts/actions/workflows/lint-test.yaml/badge.svg" alt="Lint and Test"></a>
   <a href="https://github.com/dmarc-examiner/helm-charts/actions/workflows/release.yaml"><img src="https://github.com/dmarc-examiner/helm-charts/actions/workflows/release.yaml/badge.svg" alt="Release"></a>
   <a href="https://github.com/dmarc-examiner/helm-charts/tree/main/charts/mta-sts"><img src="https://img.shields.io/badge/dynamic/yaml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdmarc-examiner%2Fhelm-charts%2Fmain%2Fcharts%2Fmta-sts%2FChart.yaml&query=%24.version&label=mta-sts&logo=helm&color=0F1689" alt="mta-sts chart version"></a>
+  <a href="https://artifacthub.io/packages/search?repo=dmarc-examiner"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/dmarc-examiner" alt="Artifact Hub"></a>
   <img src="https://img.shields.io/badge/kubernetes-%E2%89%A51.25-326CE5?logo=kubernetes&logoColor=white" alt="Kubernetes 1.25+">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License"></a>
 </p>
