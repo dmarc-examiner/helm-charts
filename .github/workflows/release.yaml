@@ -44,5 +44,9 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           for pkg in .cr-release-packages/*.tgz; do
-            helm push "$pkg" "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER}/charts"
+            for attempt in 1 2 3; do
+              helm push "$pkg" "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER}/charts" && break
+              [ "$attempt" = 3 ] && exit 1
+              sleep $((attempt * 10))
+            done
           done
