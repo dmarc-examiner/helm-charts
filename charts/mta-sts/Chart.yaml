@@ -33,3 +33,6 @@ annotations:
   artifacthub.io/images: |
     - name: nginx-unprivileged
       image: docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine
+  artifacthub.io/changes: |
+    - kind: added
+      description: First release. Multi-domain MTA-STS policies, automatic policy id, TLS-RPT and external-dns DNSEndpoint.
