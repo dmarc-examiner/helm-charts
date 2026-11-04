@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mta-sts.fullname" . }}
+  labels:
+    {{- include "mta-sts.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    map $host $mta_sts_policy_file {
+      default "";
+      {{- range .Values.domains }}
+      {{- $d := include "mta-sts.domain" (dict "root" $ "domain" .) | fromYaml }}
+      {{ $d.host }} {{ $d.name }}.txt;
+      {{- end }}
+    }
+
+    server {
+      listen 8080 default_server;
+      server_tokens off;
+      access_log off;
+
+      location = /.well-known/mta-sts.txt {
+        if ($mta_sts_policy_file = "") {
+          return 404;
+        }
+        default_type text/plain;
+        types { }
+        alias /etc/mta-sts/policies/$mta_sts_policy_file;
+      }
+
+      location = /healthz {
+        default_type text/plain;
+        return 200 "ok\n";
+      }
+
+      location / {
+        return 404;
+      }
+    }
+  {{- range .Values.domains }}
+  {{- $d := include "mta-sts.domain" (dict "root" $ "domain" .) | fromYaml }}
+  {{ $d.name }}.txt: |
+    {{- include "mta-sts.policy" $d | trim | nindent 4 }}
+  {{- end }}

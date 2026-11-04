@@ -1,0 +1,75 @@
+suite: DNS records
+templates:
+  - templates/dnsendpoint.yaml
+set:
+  domains:
+    - name: example.com
+  policy.mx:
+    - mx1.example.com
+tests:
+  - it: is disabled by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: publishes the _mta-sts record with a 20-char policy id
+    set:
+      externalDns.enabled: true
+    asserts:
+      - equal:
+          path: spec.endpoints[0].dnsName
+          value: _mta-sts.example.com
+      - matchRegex:
+          path: spec.endpoints[0].targets[0]
+          pattern: "^v=STSv1; id=[a-f0-9]{20}$"
+      - lengthEqual:
+          path: spec.endpoints
+          count: 1
+
+  - it: keeps the policy id stable when the policy does not change
+    set:
+      externalDns.enabled: true
+      replicaCount: 5
+    asserts:
+      - equal:
+          path: spec.endpoints[0].targets[0]
+          value: "v=STSv1; id=3d0266927fc2fbe7b10f"
+
+  - it: changes the policy id when the policy changes
+    set:
+      externalDns.enabled: true
+      policy.mode: enforce
+    asserts:
+      - notEqual:
+          path: spec.endpoints[0].targets[0]
+          value: "v=STSv1; id=3d0266927fc2fbe7b10f"
+
+  - it: publishes TLS-RPT with the domain placeholder replaced
+    set:
+      externalDns.enabled: true
+      tlsRpt.rua:
+        - mailto:tls-reports@{domain}
+        - https://reports.example.net/tlsrpt
+    asserts:
+      - equal:
+          path: spec.endpoints[1]
+          value:
+            dnsName: _smtp._tls.example.com
+            recordType: TXT
+            recordTTL: 300
+            targets:
+              - "v=TLSRPTv1; rua=mailto:tls-reports@example.com,https://reports.example.net/tlsrpt"
+
+  - it: lets a domain override the TLS-RPT destinations
+    set:
+      externalDns.enabled: true
+      tlsRpt.rua:
+        - mailto:tls-reports@{domain}
+      domains:
+        - name: example.com
+          tlsRptRua:
+            - mailto:other@example.net
+    asserts:
+      - equal:
+          path: spec.endpoints[1].targets[0]
+          value: "v=TLSRPTv1; rua=mailto:other@example.net"

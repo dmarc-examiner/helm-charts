@@ -1,0 +1,15 @@
+replicaCount: 1
+
+domains:
+  - name: example.com
+  - name: example.org
+    mode: enforce
+    maxAge: 1209600
+    mx:
+      - mx.example.org
+  - name: example.net
+    mode: none
+
+policy:
+  mx:
+    - mx1.example.com

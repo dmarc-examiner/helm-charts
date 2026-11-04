@@ -1,0 +1,28 @@
+{{- if .Values.externalDns.enabled }}
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: {{ include "mta-sts.fullname" . }}
+  labels:
+    {{- include "mta-sts.labels" . | nindent 4 }}
+    {{- with .Values.externalDns.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  endpoints:
+    {{- range .Values.domains }}
+    {{- $d := include "mta-sts.domain" (dict "root" $ "domain" .) | fromYaml }}
+    - dnsName: _mta-sts.{{ $d.name }}
+      recordType: TXT
+      recordTTL: {{ $.Values.externalDns.recordTTL }}
+      targets:
+        - {{ printf "v=STSv1; id=%s" (include "mta-sts.policyId" $d) | quote }}
+    {{- if $d.rua }}
+    - dnsName: _smtp._tls.{{ $d.name }}
+      recordType: TXT
+      recordTTL: {{ $.Values.externalDns.recordTTL }}
+      targets:
+        - {{ printf "v=TLSRPTv1; rua=%s" (join "," $d.rua) | quote }}
+    {{- end }}
+    {{- end }}
+{{- end }}

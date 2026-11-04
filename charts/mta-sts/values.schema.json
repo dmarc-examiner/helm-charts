@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["domains", "policy"],
+  "definitions": {
+    "mode": {
+      "type": "string",
+      "enum": ["testing", "enforce", "none"]
+    },
+    "maxAge": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 31557600
+    },
+    "mx": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(\\*\\.)?([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,63}\\.?$"
+      }
+    },
+    "rua": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(mailto:[^\\s,;!]+@[^\\s,;!]+|https://[^\\s,;!]+)$"
+      }
+    }
+  },
+  "properties": {
+    "domains": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,63}$"
+          },
+          "mode": { "$ref": "#/definitions/mode" },
+          "maxAge": { "$ref": "#/definitions/maxAge" },
+          "mx": { "$ref": "#/definitions/mx" },
+          "tlsRptRua": { "$ref": "#/definitions/rua" }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "maxAge"],
+      "properties": {
+        "mode": { "$ref": "#/definitions/mode" },
+        "maxAge": { "$ref": "#/definitions/maxAge" },
+        "mx": { "$ref": "#/definitions/mx" }
+      }
+    },
+    "tlsRpt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rua": { "$ref": "#/definitions/rua" }
+      }
+    },
+    "replicaCount": { "type": "integer", "minimum": 0 },
+    "externalDns": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "recordTTL": { "type": "integer", "minimum": 1 },
+        "labels": { "type": "object" }
+      }
+    }
+  }
+}

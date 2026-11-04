@@ -1,0 +1,65 @@
+suite: ingress
+templates:
+  - templates/ingress.yaml
+set:
+  domains:
+    - name: example.com
+    - name: example.org
+  policy.mx:
+    - mx1.example.com
+tests:
+  - it: creates one exact-path rule per domain
+    asserts:
+      - lengthEqual:
+          path: spec.rules
+          count: 2
+      - equal:
+          path: spec.rules[1].host
+          value: mta-sts.example.org
+      - equal:
+          path: spec.rules[0].http.paths[0]
+          value:
+            path: /.well-known/mta-sts.txt
+            pathType: Exact
+            backend:
+              service:
+                name: RELEASE-NAME-mta-sts
+                port:
+                  name: http
+
+  - it: covers every host with one TLS secret
+    asserts:
+      - equal:
+          path: spec.tls[0]
+          value:
+            secretName: RELEASE-NAME-mta-sts-tls
+            hosts:
+              - mta-sts.example.com
+              - mta-sts.example.org
+
+  - it: adds the cert-manager annotation and keeps user annotations
+    set:
+      ingress.certManager.clusterIssuer: letsencrypt
+      ingress.annotations:
+        example.com/owner: mail
+    asserts:
+      - equal:
+          path: metadata.annotations
+          value:
+            cert-manager.io/cluster-issuer: letsencrypt
+            example.com/owner: mail
+
+  - it: sets the ingress class
+    set:
+      ingress.className: nginx
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+
+  - it: can be disabled
+    set:
+      ingress.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

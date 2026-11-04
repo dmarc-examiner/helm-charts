@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "mta-sts.fullname" . }}-test
+  labels:
+    {{- include "mta-sts.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: curl
+      image: {{ printf "%s:%s" .Values.tests.image.repository .Values.tests.image.tag }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      command:
+        - /bin/sh
+        - -ec
+        - |
+          base="http://{{ include "mta-sts.fullname" . }}:{{ .Values.service.port }}/.well-known/mta-sts.txt"
+          {{- range .Values.domains }}
+          {{- $d := include "mta-sts.domain" (dict "root" $ "domain" .) | fromYaml }}
+          echo "Checking {{ $d.host }}"
+          body="$(curl -fsS --retry 10 --retry-connrefused --retry-delay 2 -H 'Host: {{ $d.host }}' "$base")"
+          echo "$body"
+          echo "$body" | grep -qx 'version: STSv1'
+          echo "$body" | grep -qx 'mode: {{ $d.mode }}'
+          {{- end }}
+          echo "Checking unknown host returns 404"
+          code="$(curl -s --retry 10 --retry-connrefused --retry-delay 2 -o /dev/null -w '%{http_code}' -H 'Host: mta-sts.invalid' "$base")"
+          test "$code" = "404"

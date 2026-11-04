@@ -1,0 +1,84 @@
+suite: policy files
+templates:
+  - templates/configmap.yaml
+tests:
+  - it: renders the default policy for a domain
+    set:
+      domains:
+        - name: example.com
+      policy.mx:
+        - mx1.example.com
+        - "*.mail.example.com"
+    asserts:
+      - equal:
+          path: data["example.com.txt"]
+          value: |
+            version: STSv1
+            mode: testing
+            mx: mx1.example.com
+            mx: *.mail.example.com
+            max_age: 604800
+
+  - it: applies per-domain overrides
+    set:
+      domains:
+        - name: example.com
+        - name: example.org
+          mode: enforce
+          maxAge: 31557600
+          mx:
+            - mx.example.org
+      policy.mx:
+        - mx1.example.com
+    asserts:
+      - equal:
+          path: data["example.org.txt"]
+          value: |
+            version: STSv1
+            mode: enforce
+            mx: mx.example.org
+            max_age: 31557600
+      - matchRegex:
+          path: data["example.com.txt"]
+          pattern: "mode: testing"
+
+  - it: lowercases domain names
+    set:
+      domains:
+        - name: Example.COM
+      policy.mx:
+        - mx1.example.com
+    asserts:
+      - exists:
+          path: data["example.com.txt"]
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "mta-sts.example.com example.com.txt;"
+
+  - it: maps every policy host in nginx
+    set:
+      domains:
+        - name: example.com
+        - name: example.org
+      policy.mx:
+        - mx1.example.com
+    asserts:
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "mta-sts.example.com example.com.txt;\\s+mta-sts.example.org example.org.txt;"
+
+  - it: fails without MX hosts unless mode is none
+    set:
+      domains:
+        - name: example.com
+    asserts:
+      - failedTemplate:
+          errorPattern: "domain example.com: policy.mx needs at least one MX host"
+
+  - it: allows mode none without MX hosts
+    set:
+      domains:
+        - name: example.com
+          mode: none
+    asserts:
+      - notFailedTemplate: {}

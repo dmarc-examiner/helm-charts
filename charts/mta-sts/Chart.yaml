@@ -1,0 +1,35 @@
+apiVersion: v2
+name: mta-sts
+description: Serve MTA-STS policies (RFC 8461) for one or many domains, with TLS-RPT and DNS records through external-dns.
+type: application
+version: 0.1.0
+appVersion: "1.30.6"
+kubeVersion: ">=1.25.0-0"
+home: https://dmarc-examiner.com
+icon: https://dmarc-examiner.com/favicon.svg
+sources:
+  - https://github.com/dmarc-examiner/helm-charts
+keywords:
+  - mta-sts
+  - tls-rpt
+  - smtp
+  - email
+  - email-security
+  - rfc8461
+  - dmarc
+maintainers:
+  - name: dmarc-examiner
+    url: https://dmarc-examiner.com
+annotations:
+  artifacthub.io/category: security
+  artifacthub.io/license: MIT
+  artifacthub.io/links: |
+    - name: DMARC Examiner
+      url: https://dmarc-examiner.com
+    - name: RFC 8461 (MTA-STS)
+      url: https://www.rfc-editor.org/rfc/rfc8461
+    - name: RFC 8460 (TLS-RPT)
+      url: https://www.rfc-editor.org/rfc/rfc8460
+  artifacthub.io/images: |
+    - name: nginx-unprivileged
+      image: docker.io/nginxinc/nginx-unprivileged:1.30.6-alpine

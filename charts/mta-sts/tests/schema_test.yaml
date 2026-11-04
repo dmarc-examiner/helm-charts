@@ -1,0 +1,34 @@
+suite: values schema
+templates:
+  - templates/configmap.yaml
+set:
+  domains:
+    - name: example.com
+  policy.mx:
+    - mx1.example.com
+tests:
+  - it: rejects an unknown mode
+    set:
+      policy.mode: strict
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects max_age above one year
+    set:
+      policy.maxAge: 31557601
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects a TLS-RPT destination without scheme
+    set:
+      tlsRpt.rua:
+        - tls-reports@example.com
+    asserts:
+      - failedTemplate: {}
+
+  - it: rejects an invalid domain name
+    set:
+      domains:
+        - name: "not a domain"
+    asserts:
+      - failedTemplate: {}

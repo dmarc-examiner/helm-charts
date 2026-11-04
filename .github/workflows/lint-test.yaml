@@ -1,0 +1,86 @@
+name: Lint and Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  HELM_VERSION: v3.22.1
+  KUBECONFORM_VERSION: v0.8.0
+  HELM_UNITTEST_VERSION: v1.2.1
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@v5.0.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+
+      - uses: helm/chart-testing-action@v2.9.0
+
+      - name: Lint charts
+        run: ct lint --config ct.yaml --all --check-version-increment=false
+
+      - name: Unit tests
+        run: |
+          helm plugin install https://github.com/helm-unittest/helm-unittest --version "${HELM_UNITTEST_VERSION}"
+          helm unittest charts/*
+
+      - name: Validate manifests against Kubernetes schemas
+        run: |
+          curl -sSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" | tar xz kubeconform
+          for chart in charts/*/; do
+            for values in "${chart}"ci/*-values.yaml; do
+              echo "::group::${values}"
+              helm template ci "${chart}" -f "${values}" --set externalDns.enabled=true \
+                | ./kubeconform -strict -summary \
+                    -schema-location default \
+                    -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+              echo "::endgroup::"
+            done
+          done
+
+  install:
+    needs: lint
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        k8s:
+          - v1.33.7
+          - v1.36.4
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@v5.0.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+
+      - uses: helm/chart-testing-action@v2.9.0
+
+      - uses: helm/kind-action@v1.15.1
+        with:
+          node_image: kindest/node:${{ matrix.k8s }}
+
+      - name: Install charts and run helm test
+        run: ct install --config ct.yaml --all

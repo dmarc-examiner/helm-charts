@@ -1,0 +1,109 @@
+# -- Domains that publish an MTA-STS policy. Each one is served at
+# `https://mta-sts.<name>/.well-known/mta-sts.txt`.
+# Any key from `policy` and `tlsRpt` can be overridden per domain.
+domains: []
+# - name: example.com
+# - name: example.org
+#   mode: enforce
+#   mx:
+#     - mx1.example.org
+
+# Default policy for every domain.
+policy:
+  # -- `testing` reports failures without blocking mail. `enforce` blocks delivery
+  # to MX hosts that fail TLS validation. `none` withdraws a previous policy.
+  mode: testing
+  # -- Seconds that senders cache the policy. RFC 8461 recommends weeks; the maximum is 31557600.
+  maxAge: 604800
+  # -- MX hosts allowed to receive mail. Wildcards like `*.example.com` match one label.
+  mx: []
+
+# TLS-RPT (RFC 8460) reporting record, `_smtp._tls.<domain>`.
+tlsRpt:
+  # -- Where senders deliver daily TLS reports. `{domain}` is replaced by each domain name.
+  rua: []
+  # - mailto:tls-reports@{domain}
+
+ingress:
+  # -- Create an Ingress with one `mta-sts.<domain>` host per domain.
+  enabled: true
+  # -- IngressClass name. Empty uses the cluster default.
+  className: ""
+  # -- Extra Ingress annotations.
+  annotations: {}
+  certManager:
+    # -- Adds `cert-manager.io/cluster-issuer`. Leave empty to manage TLS yourself.
+    clusterIssuer: ""
+    # -- Adds `cert-manager.io/issuer` for a namespaced Issuer.
+    issuer: ""
+  tls:
+    # -- Terminate TLS on the Ingress. MTA-STS requires a publicly trusted certificate.
+    enabled: true
+    # -- TLS Secret name. Defaults to `<fullname>-tls`.
+    secretName: ""
+
+externalDns:
+  # -- Create a `DNSEndpoint` (external-dns CRD source) with the `_mta-sts` and `_smtp._tls` TXT records.
+  enabled: false
+  # -- TTL of the TXT records in seconds.
+  recordTTL: 300
+  # -- Extra labels for the DNSEndpoint, for external-dns `--label-filter`.
+  labels: {}
+
+replicaCount: 2
+
+image:
+  repository: docker.io/nginxinc/nginx-unprivileged
+  tag: "1.30.6-alpine"
+  # -- Pins the image by digest. Takes precedence over `tag`.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 80
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 101
+  runAsGroup: 101
+  fsGroup: 101
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 16Mi
+  limits:
+    memory: 64Mi
+
+podDisruptionBudget:
+  # -- Created only when `replicaCount` is greater than 1.
+  enabled: true
+  minAvailable: 1
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+priorityClassName: ""
+
+tests:
+  image:
+    repository: docker.io/curlimages/curl
+    tag: "8.23.0"

@@ -1,0 +1,31 @@
+MTA-STS is serving {{ len .Values.domains }} domain(s).
+
+{{- range .Values.domains }}
+{{- $d := include "mta-sts.domain" (dict "root" $ "domain" .) | fromYaml }}
+
+{{ $d.name }}  (mode: {{ $d.mode }})
+  Policy URL: https://{{ $d.host }}/.well-known/mta-sts.txt
+{{- if not $.Values.externalDns.enabled }}
+  DNS records to create:
+    _mta-sts.{{ $d.name }}.  TXT  "v=STSv1; id={{ include "mta-sts.policyId" $d }}"
+{{- if $d.rua }}
+    _smtp._tls.{{ $d.name }}.  TXT  "v=TLSRPTv1; rua={{ join "," $d.rua }}"
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.externalDns.enabled }}
+
+TXT records are managed by external-dns through the DNSEndpoint {{ include "mta-sts.fullname" . }}.
+{{- else }}
+
+The policy id changes when the policy changes. Update the _mta-sts TXT record
+after every upgrade that changes mode, mx or maxAge, or enable externalDns.
+{{- end }}
+
+Check a domain:
+  curl -s https://mta-sts.<domain>/.well-known/mta-sts.txt
+  dig +short TXT _mta-sts.<domain>
+
+Validate the full setup with the free checker:
+  https://dmarc-examiner.com/tools/email-compliance

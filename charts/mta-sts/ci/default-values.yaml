@@ -1,0 +1,11 @@
+domains:
+  - name: example.com
+
+policy:
+  mx:
+    - mx1.example.com
+    - "*.mail.example.com"
+
+tlsRpt:
+  rua:
+    - mailto:tls-reports@{domain}

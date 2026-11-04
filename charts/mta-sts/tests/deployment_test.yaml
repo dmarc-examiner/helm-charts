@@ -1,0 +1,67 @@
+suite: deployment
+templates:
+  - templates/configmap.yaml
+  - templates/deployment.yaml
+set:
+  domains:
+    - name: example.com
+  policy.mx:
+    - mx1.example.com
+tests:
+  - it: fails without domains
+    set:
+      domains: []
+    template: templates/deployment.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "add at least one domain"
+
+  - it: runs nginx hardened and read-only
+    template: templates/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext
+          value:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+
+  - it: uses the pinned image tag or a digest
+    template: templates/deployment.yaml
+    set:
+      image.digest: sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/nginxinc/nginx-unprivileged@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
+
+  - it: mounts one policy file per domain
+    template: templates/deployment.yaml
+    set:
+      domains:
+        - name: example.com
+        - name: example.org
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[1].configMap.items
+          value:
+            - key: example.com.txt
+              path: example.com.txt
+            - key: example.org.txt
+              path: example.org.txt
+
+  - it: rolls pods when the policy changes
+    template: templates/deployment.yaml
+    set:
+      policy.mode: enforce
+    asserts:
+      - exists:
+          path: spec.template.metadata.annotations["checksum/config"]
